@@ -1,0 +1,77 @@
+services:
+  mariadb:
+    image: 'mariadb:10'
+    ports:
+      - '${FORWARD_DB_PORT:-3307}:3306'
+    environment:
+      MYSQL_ROOT_PASSWORD: '${DB_PASSWORD}'
+      MYSQL_ROOT_HOST: '%'
+      MYSQL_DATABASE: '${DB_DATABASE}'
+      MYSQL_USER: '${DB_USERNAME}'
+      MYSQL_PASSWORD: '${DB_PASSWORD}'
+      MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+    command: [ 'mysqld', '--max_allowed_packet=2G' ]
+    volumes:
+      - '${DATA_PATH_HOST}/mysql:/var/lib/mysql'
+    networks:
+      - sail
+
+  redis:
+    image: 'redis:alpine'
+    ports:
+      - '${FORWARD_REDIS_PORT:-6379}:6379'
+    volumes:
+      - '${DATA_PATH_HOST}/redis:/data'
+    networks:
+      - sail
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      retries: 3
+      timeout: 5s
+  nginx:
+    build:
+      context: "./docker/nginx"
+    depends_on:
+      - php-fpm
+    volumes:
+      - ${NGINX_SSL_PATH}:/etc/nginx/ssl
+      - ${APP_CODE_PATH_HOST}:${APP_CODE_PATH_CONTAINER}${APP_CODE_CONTAINER_FLAG}
+      - ${NGINX_HOST_LOG_PATH}:/var/log/nginx
+      - ${NGINX_SITES_PATH}:/etc/nginx/sites-available
+    ports:
+      #            port mappings, host to docker
+      - "${NGINX_HOST_HTTPS_PORT}:443"
+      - "${NGINX_HOST_HTTP_PORT}:80"
+    networks:
+      - sail
+
+  php-fpm:
+    build:
+      context: "./docker/php-fpm"
+    volumes:
+      - ${APP_CODE_PATH_HOST}:${APP_CODE_PATH_CONTAINER}${APP_CODE_CONTAINER_FLAG}
+      - ./docker/php-fpm/supervisord.conf:/etc/supervisor/conf.d/supervisord.conf
+      - ./docker/php-fpm/crond.conf:/etc/cron.d/laravel-cron
+    networks:
+      - sail
+    expose:
+      - "9000"
+
+  phpmyadmin:
+    image: 'phpmyadmin:latest'
+    ports:
+      - '8081:80'
+    networks:
+      - sail
+    environment:
+      - PMA_ARBITRARY=1
+      - UPLOAD_LIMIT=1000M
+
+networks:
+  sail:
+    driver: bridge
+volumes:
+  sail-mysql:
+    driver: local
+  sail-redis:
+    driver: local

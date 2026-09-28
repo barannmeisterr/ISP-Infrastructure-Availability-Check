@@ -1,0 +1,389 @@
+#!/bin/bash
+
+# Laravel Helper Script for Docker Compose
+# Usage: ./laravel [composer|artisan] [command] [options...]
+
+# Don't use set -e, we'll handle errors explicitly
+set +e
+
+# Configuration
+CONTAINER="php-fpm"
+COMPOSE_FILE="docker-compose.yml"
+WORK_DIR="/var/www/laravel/current"
+WWW_USER="www-data"
+WWW_UID="1000"
+
+# Get host user ID (for permission fixing)
+HOST_UID=$(id -u)
+HOST_GID=$(id -g)
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Function to print colored messages
+info() {
+    echo -e "${GREEN}[INFO]${NC} $1"
+}
+
+warn() {
+    echo -e "${YELLOW}[WARN]${NC} $1"
+}
+
+error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+# Function to fix permissions on Laravel directories
+fix_permissions() {
+    info "Fixing permissions..."
+
+    # Check if container is running first
+    if ! docker compose -f "$COMPOSE_FILE" ps "$CONTAINER" | grep -q "Up"; then
+        warn "Container $CONTAINER is not running. Skipping permission fix."
+        return 0
+    fi
+""
+    # First, ensure storage and cache have correct ownership and permissions for www-data
+    # This is critical for Laravel to write logs, cache files, etc.
+    docker compose -f "$COMPOSE_FILE" exec -T "$CONTAINER" bash -c "
+        cd $WORK_DIR 2>/dev/null || exit 0 && \
+        chown -R $WWW_USER:$WWW_USER storage bootstrap/cache 2>/dev/null || true && \
+        chmod -R 775 storage bootstrap/cache 2>/dev/null || true && \
+        find storage bootstrap/cache -type d -exec chmod 775 {} \; 2>/dev/null || true && \
+        find storage bootstrap/cache -type f -exec chmod 664 {} \; 2>/dev/null || true
+    " 2>/dev/null || true
+
+    sudo chown -R $USER:$USER app database resources routes public
+
+    # If host UID is different from container www-data UID, fix ownership of other files
+    # This allows the host user to edit files created by composer/artisan
+    if [ "$HOST_UID" != "$WWW_UID" ]; then
+        warn "Host UID ($HOST_UID) differs from container www-data UID ($WWW_UID). Fixing file ownership..."
+
+        # Change ownership of files/dirs owned by www-data (except storage and cache)
+        docker compose -f "$COMPOSE_FILE" exec -T "$CONTAINER" bash -c "
+            cd $WORK_DIR 2>/dev/null || exit 0 && \
+            find . -user $WWW_UID ! -path './storage/*' ! -path './bootstrap/cache/*' ! -path './vendor/*' -exec chown $HOST_UID:$HOST_GID {} \; 2>/dev/null || true && \
+            find vendor -user $WWW_UID -type f -exec chown $HOST_UID:$HOST_GID {} \; 2>/dev/null || true
+        " 2>/dev/null || true
+
+        # Ensure vendor directory is readable but keep ownership flexible
+        docker compose -f "$COMPOSE_FILE" exec -T "$CONTAINER" bash -c "
+            cd $WORK_DIR 2>/dev/null || exit 0 && \
+            chmod -R u+w,g+w,o-w vendor 2>/dev/null || true
+        " 2>/dev/null || true
+    fi
+
+    info "Permissions fixed."
+    return 0
+}
+
+# Function to run composer commands
+run_composer() {
+    local args="$*"
+    info "Running: composer $args"
+
+    docker compose -f "$COMPOSE_FILE" exec -T "$CONTAINER" bash -c "
+        cd $WORK_DIR && \
+        composer $args
+    "
+
+    local exit_code=$?
+
+    # Permissions are not fixed automatically
+    # Run './laravel fix-permissions' manually if needed
+
+    exit $exit_code
+}
+
+# Function to run artisan commands
+run_artisan() {
+    local args="$*"
+    info "Running: php artisan $args"
+
+    docker compose -f "$COMPOSE_FILE" exec -T "$CONTAINER" bash -c "
+        cd $WORK_DIR && \
+        php artisan $args
+    "
+
+    local exit_code=$?
+
+    # Permissions are not fixed automatically
+    # Run './laravel fix-permissions' manually if needed
+
+    exit $exit_code
+}
+
+# Function to start containers
+docker_up() {
+    local args="$*"
+    info "Starting Docker containers..."
+
+    if [[ "$args" == *"-d"* ]] || [[ "$args" == *"--detach"* ]]; then
+        docker compose -f "$COMPOSE_FILE" up -d $args
+    else
+        docker compose -f "$COMPOSE_FILE" up $args
+    fi
+
+    exit $?
+}
+
+# Function to stop containers
+docker_down() {
+    local args="$*"
+    info "Stopping Docker containers..."
+    docker compose -f "$COMPOSE_FILE" down $args
+    exit $?
+}
+
+# Function to start stopped containers
+docker_start() {
+    local service="${1:-}"
+    info "Starting Docker containers..."
+    if [ -n "$service" ]; then
+        docker compose -f "$COMPOSE_FILE" start "$service"
+    else
+        docker compose -f "$COMPOSE_FILE" start
+    fi
+    exit $?
+}
+
+# Function to stop running containers
+docker_stop() {
+    local service="${1:-}"
+    info "Stopping Docker containers..."
+    if [ -n "$service" ]; then
+        docker compose -f "$COMPOSE_FILE" stop "$service"
+    else
+        docker compose -f "$COMPOSE_FILE" stop
+    fi
+    exit $?
+}
+
+# Function to restart containers
+docker_restart() {
+    local service="${1:-}"
+    info "Restarting Docker containers..."
+    if [ -n "$service" ]; then
+        docker compose -f "$COMPOSE_FILE" restart "$service"
+    else
+        docker compose -f "$COMPOSE_FILE" restart
+    fi
+    exit $?
+}
+
+# Function to rebuild containers
+docker_rebuild() {
+    local args="$*"
+    info "Rebuilding Docker containers..."
+
+    if [[ "$args" == *"--no-cache"* ]]; then
+        docker compose -f "$COMPOSE_FILE" build --no-cache
+    else
+        docker compose -f "$COMPOSE_FILE" build $args
+    fi
+
+    local exit_code=$?
+
+    if [ $exit_code -eq 0 ] && [[ "$args" != *"--build"* ]]; then
+        info "Rebuild complete. Run './laravel up' to start containers."
+    fi
+
+    exit $exit_code
+}
+
+# Function to show container status
+docker_ps() {
+    docker compose -f "$COMPOSE_FILE" ps
+    exit $?
+}
+
+# Function to show logs
+docker_logs() {
+    # First argument might be a service name or an option
+    if [ $# -gt 0 ] && [[ ! "$1" =~ ^- ]]; then
+        # First argument is a service name
+        local service="$1"
+        shift
+        docker compose -f "$COMPOSE_FILE" logs "$@" "$service"
+    else
+        # No service specified, just pass all arguments
+        docker compose -f "$COMPOSE_FILE" logs "$@"
+    fi
+    exit $?
+}
+
+# Function to execute command in container
+docker_exec() {
+    local service="${1:-$CONTAINER}"
+    shift
+
+    if [ $# -eq 0 ]; then
+        error "No command specified. Usage: $0 exec [service] <command>"
+        exit 1
+    fi
+
+    info "Executing command in $service container (working directory: $WORK_DIR)..."
+
+    # If service is php-fpm, automatically change to WORK_DIR
+    if [ "$service" == "$CONTAINER" ]; then
+        docker compose -f "$COMPOSE_FILE" exec -w "$WORK_DIR" "$service" "$@"
+    else
+        docker compose -f "$COMPOSE_FILE" exec "$service" "$@"
+    fi
+
+    exit $?
+}
+
+# Function to open shell in php-fpm container
+docker_shell() {
+    local service="${1:-$CONTAINER}"
+    info "Opening shell in $service container (working directory: $WORK_DIR)..."
+
+    # Always start in WORK_DIR for php-fpm, try for other services too
+    if [ "$service" == "$CONTAINER" ]; then
+        docker compose -f "$COMPOSE_FILE" exec -w "$WORK_DIR" "$service" /bin/bash
+    else
+        # Try to use WORK_DIR if it exists in the container, otherwise use default
+        docker compose -f "$COMPOSE_FILE" exec -w "$WORK_DIR" "$service" /bin/bash 2>/dev/null || \
+        docker compose -f "$COMPOSE_FILE" exec "$service" /bin/bash
+    fi
+
+    exit $?
+}
+
+run_composer_ide_helper() {
+    info "Running: composer ide-helper"
+
+    docker compose -f "$COMPOSE_FILE" exec -T "$CONTAINER" bash -c "
+        cd $WORK_DIR && \
+        composer ide-helper
+    "
+
+    exit $?
+}
+
+# Function to show usage
+show_usage() {
+    echo "Laravel Helper Script for Docker Compose"
+    echo ""
+    echo "Usage:"
+    echo "  $0 composer [command] [options...]"
+    echo "  $0 artisan [command] [options...]"
+    echo "  $0 fix-permissions"
+    echo ""
+    echo "Docker Compose Commands:"
+    echo "  $0 up [-d]                    Start containers (use -d for detached mode)"
+    echo "  $0 down [options]             Stop and remove containers"
+    echo "  $0 start [service]            Start stopped containers"
+    echo "  $0 stop [service]             Stop running containers"
+    echo "  $0 restart [service]          Restart containers"
+    echo "  $0 rebuild [--no-cache]       Rebuild container images"
+    echo "  $0 ps                         Show container status"
+    echo "  $0 logs [service] [options]   Show container logs"
+    echo "  $0 exec [service] <command>   Execute command in container"
+    echo "  $0 shell [service]            Open shell in php-fpm container"
+    echo ""
+    echo "Examples:"
+    echo "  $0 composer install"
+    echo "  $0 composer require laravel/sanctum"
+    echo "  $0 artisan migrate"
+    echo "  $0 artisan make:controller UserController"
+    echo "  $0 artisan migrate:fresh --seed"
+    echo "  $0 fix-permissions"
+    echo "  $0 up -d"
+    echo "  $0 down"
+    echo "  $0 rebuild --no-cache"
+    echo "  $0 logs php-fpm -f"
+    echo "  $0 shell"
+    echo ""
+}
+
+# Main script logic
+if [ $# -eq 0 ]; then
+    show_usage
+    exit 1
+fi
+
+case "$1" in
+    composer)
+        shift
+        if [ $# -eq 0 ]; then
+            error "No composer command specified."
+            show_usage
+            exit 1
+        fi
+        run_composer "$@"
+        ;;
+    artisan|art)
+        shift
+        if [ $# -eq 0 ]; then
+            error "No artisan command specified."
+            show_usage
+            exit 1
+        fi
+        run_artisan "$@"
+        ;;
+    fix-permissions|fix-perms|perms)
+        fix_permissions
+        exit $?
+        ;;
+    up|start-docker)
+        shift
+        docker_up "$@"
+        ;;
+    down|stop-docker)
+        shift
+        docker_down "$@"
+        ;;
+    start)
+        shift
+        docker_start "$@"
+        ;;
+    stop)
+        shift
+        docker_stop "$@"
+        ;;
+    restart)
+        shift
+        docker_restart "$@"
+        ;;
+    rebuild|build)
+        shift
+        docker_rebuild "$@"
+        ;;
+    ps|status)
+        docker_ps
+        ;;
+    logs)
+        shift
+        docker_logs "$@"
+        ;;
+    exec)
+        shift
+        docker_exec "$@"
+        ;;
+    shell|bash|sh)
+        shift
+        docker_shell "$@"
+        ;;
+    ide-helper)
+        run_composer_ide_helper
+        ;;
+    --help|-h|help)
+        show_usage
+        exit 0
+        ;;
+    *)
+        error "Unknown command: $1"
+        show_usage
+        exit 1
+        ;;
+esac
+
+# Should never reach here, but just in case
+exit 0
+
