@@ -70,7 +70,7 @@ class AltyapiService{
     public function fiberAltyapiSorgulama(int $bbk): array
     {
         $client = new Client([
-            'base_uri' => 'https://192.168.108.2',
+            'base_uri' => 'https://ss',
             'verify'   => false,
             'timeout'  => 10,
         ]);
@@ -78,8 +78,8 @@ class AltyapiService{
         try {
             $response = $client->post('/api/uavt_adres/controlService', [
                 'headers' => [
-                    'X-HTTP-Authorization' => 'c63c730d78c01161418c21550390ba7b',
-                    'Authorization'       => 'Bearer c63c730d78c01161418c21550390ba7b',
+                    'X-HTTP-Authorization' => 'ss',
+                    'Authorization'       => 'Bearer ss',
                     'Accept'              => 'application/json',
                 ],
                 'json' => [
@@ -146,7 +146,7 @@ class AltyapiService{
     public function vdslAltyapiSorgulama(int $bbk): array
     {
         $client = new Client([
-            'base_uri' => 'https://192.168.108.2',
+            'base_uri' => 'https://ss',
             'verify'   => false,
             'timeout'  => 10,
         ]);
@@ -154,8 +154,8 @@ class AltyapiService{
         try {
             $response = $client->post('/api/uavt_adres/controlService', [
                 'headers' => [
-                    'X-HTTP-Authorization' => 'c63c730d78c01161418c21550390ba7b',
-                    'Authorization'       => 'Bearer c63c730d78c01161418c21550390ba7b',
+                    'X-HTTP-Authorization' => 'ss',
+                    'Authorization'       => 'Bearer ss',
                     'Accept'              => 'application/json',
                 ],
                 'json' => [
@@ -224,7 +224,7 @@ class AltyapiService{
     public function adslAltyapiSorgulama(int $bbk): array
     {
         $client = new Client([
-            'base_uri' => 'https://192.168.108.2',
+            'base_uri' => 'https://ss',
             'verify'   => false,
             'timeout'  => 10,
         ]);
@@ -232,8 +232,8 @@ class AltyapiService{
         try {
             $response = $client->post('/api/uavt_adres/controlService', [
                 'headers' => [
-                    'X-HTTP-Authorization' => 'c63c730d78c01161418c21550390ba7b',
-                    'Authorization'       => 'Bearer c63c730d78c01161418c21550390ba7b',
+                    'X-HTTP-Authorization' => 'ss',
+                    'Authorization'       => 'Bearer ss',
                     'Accept'              => 'application/json',
                 ],
                 'json' => [
