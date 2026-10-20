@@ -12,7 +12,7 @@ class AdresService
     public function uavtIlListesiGetir(): array
     {
         $client = new Client([
-            'base_uri' => 'https://192.168.108.2',
+            'base_uri' => 'https://xxx',
             'verify'   => false, // self-signed SSL varsa
             'timeout'  => 10,
         ]);
@@ -20,12 +20,12 @@ class AdresService
         try {
             $response = $client->post('/api/uavt_adres/ilListesiGetir', [
                 'headers' => [
-                    'X-HTTP-Authorization' => 'c63c730d78c01161418c21550390ba7b',
-                    'Authorization'       => 'Bearer c63c730d78c01161418c21550390ba7b', // gerekiyorsa
+                    'X-HTTP-Authorization' => 'x',
+                    'Authorization'       => 'Bearer ss', 
                     'Content-Type'        => 'application/json',
                     'Accept'              => 'application/json',
                 ],
-                'json' => new \stdClass(), // Postman'deki {} karşılığı
+                'json' => new \stdClass(), 
             ]);
 
             $json = json_decode($response->getBody()->getContents(), true);
@@ -40,7 +40,7 @@ class AdresService
                 return [];
             }
 
-            // 2️⃣ Map işlemi (istenen alanlar)
+           
             return array_map(static function (array $item) {
                 return [
                     'kod' => $item['kod'],
@@ -49,7 +49,7 @@ class AdresService
             }, $json['data']);
 
         } catch (GuzzleException $e) {
-            // logla, exception fırlat ya da boş array dön
+       
             logger()->error('UAVT İl Listesi Hatası', [
                 'error' => $e->getMessage(),
             ]);
@@ -62,7 +62,7 @@ class AdresService
     function uavtIlceListesiGetir(int $il_id): array
     {
         $client = new Client([
-            'base_uri' => 'https://192.168.108.2',
+            'base_uri' => 'https:/jjj',
             'verify'   => false,
             'timeout'  => 10,
         ]);
@@ -70,8 +70,8 @@ class AdresService
         try {
             $response = $client->post('/api/uavt_adres/ilceListesiGetir', [
                 'headers' => [
-                    'X-HTTP-Authorization' => 'c63c730d78c01161418c21550390ba7b',
-                    'Authorization'       => 'Bearer c63c730d78c01161418c21550390ba7b',
+                    'X-HTTP-Authorization' => 'jj',
+                    'Authorization'       => 'Bearer jj',
                     'Accept'              => 'application/json',
                 ],
 
@@ -83,7 +83,7 @@ class AdresService
 
             $json = json_decode($response->getBody()->getContents(), true);
 
-            // 1️⃣ API doğrulama
+           
             if (
                 !isset($json['success']) ||
                 $json['success'] !== true ||
@@ -93,7 +93,7 @@ class AdresService
                 return [];
             }
 
-            // 2️⃣ Sadece gereken alanları çıkar
+       
             return array_map(static function (array $item) {
                 return [
                     'kod' => $item['kod'],
@@ -114,7 +114,7 @@ class AdresService
     function uavtBucakListesiGetir(int $ilce_id): array
     {
         $client = new Client([
-            'base_uri' => 'https://192.168.108.2',
+            'base_uri' => 'https://jj',
             'verify'   => false,
             'timeout'  => 10,
         ]);
@@ -122,12 +122,12 @@ class AdresService
         try {
             $response = $client->post('/api/uavt_adres/bucakListesiGetir', [
                 'headers' => [
-                    'X-HTTP-Authorization' => 'c63c730d78c01161418c21550390ba7b',
-                    'Authorization'       => 'Bearer c63c730d78c01161418c21550390ba7b',
+                    'X-HTTP-Authorization' => 'jj',
+                    'Authorization'       => 'jj',
                     'Accept'              => 'application/json',
                 ],
 
-                // ✅ ASIL OLAY BURASI
+            
                 'json' => [
                     'ilce_id' => $ilce_id,
                 ],
@@ -135,7 +135,7 @@ class AdresService
 
             $json = json_decode($response->getBody()->getContents(), true);
 
-            // 1️⃣ API doğrulama
+         
             if (
                 !isset($json['success']) ||
                 $json['success'] !== true ||
@@ -145,7 +145,7 @@ class AdresService
                 return [];
             }
 
-            // 2️⃣ Sadece gereken alanları çıkar
+          
             return array_map(static function (array $item) {
                 return [
                     'kod' => $item['kod'],
@@ -167,7 +167,7 @@ class AdresService
     function uavtMahalleListesiGetir(int $bucak_id): array
     {
         $client = new Client([
-            'base_uri' => 'https://192.168.108.2',
+            'base_uri' => 'https://cc',
             'verify'   => false,
             'timeout'  => 10,
         ]);
@@ -175,12 +175,12 @@ class AdresService
         try {
             $response = $client->post('/api/uavt_adres/mahalleListesiGetir', [
                 'headers' => [
-                    'X-HTTP-Authorization' => 'c63c730d78c01161418c21550390ba7b',
-                    'Authorization'       => 'Bearer c63c730d78c01161418c21550390ba7b',
+                    'X-HTTP-Authorization' => 'ss',
+                    'Authorization'       => 'Bearer cssa',
                     'Accept'              => 'application/json',
                 ],
 
-                // ✅ ASIL OLAY BURASI
+               
                 'json' => [
                     'bucak_id' => $bucak_id,
                 ],
@@ -188,7 +188,7 @@ class AdresService
 
             $json = json_decode($response->getBody()->getContents(), true);
 
-            // 1️⃣ API doğrulama
+          
             if (
                 !isset($json['success']) ||
                 $json['success'] !== true ||
@@ -198,7 +198,7 @@ class AdresService
                 return [];
             }
 
-            // 2️⃣ Sadece gereken alanları çıkar
+      
             return array_map(static function (array $item) {
                 return [
                     'kod' => $item['kod'],
@@ -220,7 +220,7 @@ class AdresService
     function uavtSokakListesiGetir(int $mahalle_id): array
     {
         $client = new Client([
-            'base_uri' => 'https://192.168.108.2',
+            'base_uri' => 'https://kk',
             'verify'   => false,
             'timeout'  => 10,
         ]);
@@ -228,12 +228,12 @@ class AdresService
         try {
             $response = $client->post('/api/uavt_adres/sokakListesiGetir', [
                 'headers' => [
-                    'X-HTTP-Authorization' => 'c63c730d78c01161418c21550390ba7b',
-                    'Authorization'       => 'Bearer c63c730d78c01161418c21550390ba7b',
+                    'X-HTTP-Authorization' => 'kk',
+                    'Authorization'       => 'Bearer kk',
                     'Accept'              => 'application/json',
                 ],
 
-                // ✅ ASIL OLAY BURASI
+                
                 'json' => [
                     'mahalle_id' => $mahalle_id,
                 ],
@@ -251,7 +251,7 @@ class AdresService
                 return [];
             }
 
-            // 2️⃣ Sadece gereken alanları çıkar
+           
             return array_map(static function (array $item) {
                 return [
                     'kod' => $item['kod'],
@@ -272,7 +272,7 @@ class AdresService
     function uavtBinaListesiGetir(int $sokak_id): array
     {
         $client = new Client([
-            'base_uri' => 'https://192.168.108.2',
+            'base_uri' => 'https://kk',
             'verify'   => false,
             'timeout'  => 10,
         ]);
@@ -280,8 +280,8 @@ class AdresService
         try {
             $response = $client->post('/api/uavt_adres/binaListesiGetir', [
                 'headers' => [
-                    'X-HTTP-Authorization' => 'c63c730d78c01161418c21550390ba7b',
-                    'Authorization'       => 'Bearer c63c730d78c01161418c21550390ba7b',
+                    'X-HTTP-Authorization' => 'kk',
+                    'Authorization'       => 'kk',
                     'Accept'              => 'application/json',
                 ],
 
@@ -293,7 +293,7 @@ class AdresService
 
             $json = json_decode($response->getBody()->getContents(), true);
 
-            // 1️⃣ API doğrulama
+        
             if (
                 !isset($json['success']) ||
                 $json['success'] !== true ||
@@ -303,7 +303,7 @@ class AdresService
                 return [];
             }
 
-            // 2️⃣ Sadece gereken alanları çıkar
+           
             return array_map(static function (array $item) {
                 return [
                     'kod' => $item['kod'],
@@ -325,7 +325,7 @@ class AdresService
     function uavtDaireListesiGetir(int $bina_id): array
     {
         $client = new Client([
-            'base_uri' => 'https://192.168.108.2',
+            'base_uri' => 'https://kk',
             'verify'   => false,
             'timeout'  => 10,
         ]);
@@ -333,12 +333,12 @@ class AdresService
         try {
             $response = $client->post('/api/uavt_adres/daireListesiGetir', [
                 'headers' => [
-                    'X-HTTP-Authorization' => 'c63c730d78c01161418c21550390ba7b',
-                    'Authorization'       => 'Bearer c63c730d78c01161418c21550390ba7b',
+                    'X-HTTP-Authorization' => 'kk',
+                    'Authorization'       => 'Bearer kk',
                     'Accept'              => 'application/json',
                 ],
 
-                // ✅ ASIL OLAY BURASI
+               
                 'json' => [
                     'bina_id' => $bina_id,
                 ],
@@ -346,7 +346,7 @@ class AdresService
 
             $json = json_decode($response->getBody()->getContents(), true);
 
-            // 1️⃣ API doğrulama
+          
             if (
                 !isset($json['success']) ||
                 $json['success'] !== true ||
