@@ -195,3 +195,4 @@ php artisan test
 ## License
 
 Application code follows the Laravel skeleton **MIT** license unless your organization applies a different license for this product.
+Built with PHP 8.2 and Laravel 12.
