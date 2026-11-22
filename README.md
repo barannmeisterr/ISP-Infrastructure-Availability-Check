@@ -1,4 +1,4 @@
-# ISS Altyapı Sorgulama
+# ISP Infrastructure Availability Check
 
 Address-based internet infrastructure lookup and ISP (ISS) package comparison for Turkey. Visitors pick a UAVT address, see Fiber / VDSL / ADSL availability and speeds, then get matching packages from registered providers.
 
